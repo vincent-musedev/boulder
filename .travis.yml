@@ -22,11 +22,11 @@ branches:
     - /^test-.*$/
 
 env:
-    - RUN="lints integration generate rpm" BOULDER_CONFIG_DIR="test/config"
+    - RUN="integration rpm" BOULDER_CONFIG_DIR="test/config"
     # Config changes that have landed in master but not yet been applied to
     # production can be made in boulder-config-next.json.
     - RUN="integration" BOULDER_CONFIG_DIR="test/config-next"
-    - RUN="unit"
+    - RUN="lints unit generate"
     - RUN="unit-next" BOULDER_CONFIG_DIR="test/config-next"
     - RUN="start"
     # gomod-vendor runs with a separate container because it needs to fetch
