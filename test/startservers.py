@@ -38,7 +38,7 @@ def run(cmd, race_detection, fakeclock):
     p.cmd = cmd
     return p
 
-def start(race_detection, fakeclock):
+def start(race_detection, fakeclock, config_dir=config_dir):
     """Return True if everything builds and starts.
 
     Give up and return False if anything fails to build, or dies at

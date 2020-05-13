@@ -11,6 +11,7 @@ import startservers
 
 import chisel
 from chisel import auth_and_issue
+import helpers
 from helpers import *
 
 from acme import challenges, messages
@@ -39,6 +40,23 @@ def rand_http_chall(client):
         if isinstance(c.chall, challenges.HTTP01):
             return d, c.chall
     raise(Exception("No HTTP-01 challenge found for random domain authz"))
+
+preissued_domains = []
+@register_twenty_days_ago
+def preissue_domains():
+    global preissued_domains
+    client = chisel.make_client()
+    for i in range(200):
+        domain = helpers.random_domain()
+        print("domain ", domain)
+        auth_and_issue([domain], client=client)
+        preissued_domains.append(domain)
+
+def random_domain():
+    global preissued_domains
+    domain = preissued_domains.pop()
+    print("returning preissued domain", domain)
+    return domain
 
 def test_http_challenge_loop_redirect():
     client = chisel.make_client()
@@ -439,9 +457,9 @@ def caa_recheck_setup():
     # later that they are valid (200). They should however require rechecking for
     # CAA purposes.
     numNames = 10
-    # Generate numNames subdomains of a random domain
-    base_domain = random_domain()
-    domains = [ "{0}.{1}".format(str(n),base_domain) for n in range(numNames) ]
+    global preissued_domains
+    domains = preissued_domains[:numNames]
+    del preissued_domains[:numNames]
     _, authzs = auth_and_issue(domains, client=caa_recheck_client)
     for a in authzs:
         caa_recheck_authzs.append(a)
@@ -534,7 +552,7 @@ def test_account_update():
         if actual != "mailto:"+email:
             raise(Exception("\nUpdate account failed: expected contact %s, got %s" % (email, actual)))
 
-def test_renewal_exemption():
+def txst_renewal_exemption():
     """
     Under a single domain, issue one certificate, then two renewals of that
     certificate, then one more different certificate (with a different
@@ -565,9 +583,9 @@ def test_certificates_per_name():
 def test_oversized_csr():
     # Number of names is chosen to be one greater than the configured RA/CA maxNames
     numNames = 101
-    # Generate numNames subdomains of a random domain
-    base_domain = random_domain()
-    domains = [ "{0}.{1}".format(str(n),base_domain) for n in range(numNames) ]
+    global preissued_domains
+    domains = preissued_domains[:numNames]
+    del preissued_domains[:numNames]
     # We expect issuing for these domains to produce a malformed error because
     # there are too many names in the request.
     chisel.expect_problem("urn:acme:error:malformed",

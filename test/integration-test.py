@@ -263,16 +263,22 @@ def main():
 
     if not args.test_case_filter:
         now = datetime.datetime.utcnow()
+        # In CONFIG_NEXT mode, use the basic, non-next config for setup.
+        # This lets us test the transition to V1DisableNewValidations
+        config = os.environ.get('BOULDER_CONFIG_DIR', '')
+        if CONFIG_NEXT:
+            config = "test/config"
+        now = datetime.datetime.utcnow()
 
         six_months_ago = now+datetime.timedelta(days=-30*6)
-        if not startservers.start(race_detection=race_detection, fakeclock=fakeclock(six_months_ago)):
+        if not startservers.start(race_detection=race_detection, fakeclock=fakeclock(six_months_ago), config_dir=config):
             raise(Exception("startservers failed (mocking six months ago)"))
         v1_integration.caa_client = caa_client = chisel.make_client()
         setup_six_months_ago()
         startservers.stop()
 
         twenty_days_ago = now+datetime.timedelta(days=-20)
-        if not startservers.start(race_detection=race_detection, fakeclock=fakeclock(twenty_days_ago)):
+        if not startservers.start(race_detection=race_detection, fakeclock=fakeclock(twenty_days_ago), config_dir=config):
             raise(Exception("startservers failed (mocking twenty days ago)"))
         setup_twenty_days_ago()
         startservers.stop()
