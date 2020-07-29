@@ -13,15 +13,19 @@ import (
 )
 
 type hsmRandReader struct {
-	*pkcs11helpers.Session
+	ctx     pkcs11helpers.PKCtx
+	session pkcs11.SessionHandle
 }
 
-func newRandReader(session *pkcs11helpers.Session) *hsmRandReader {
-	return &hsmRandReader{session}
+func newRandReader(ctx pkcs11helpers.PKCtx, session pkcs11.SessionHandle) *hsmRandReader {
+	return &hsmRandReader{
+		ctx:     ctx,
+		session: session,
+	}
 }
 
 func (hrr hsmRandReader) Read(p []byte) (n int, err error) {
-	r, err := hrr.Module.GenerateRandom(hrr.Session.Session, len(p))
+	r, err := hrr.ctx.GenerateRandom(hrr.session, len(p))
 	if err != nil {
 		return 0, err
 	}
@@ -49,8 +53,8 @@ type keyInfo struct {
 	id  []byte
 }
 
-func generateKey(session *pkcs11helpers.Session, label string, outputPath string, config keyGenConfig) (*keyInfo, error) {
-	_, err := session.FindObject([]*pkcs11.Attribute{})
+func generateKey(ctx pkcs11helpers.PKCtx, session pkcs11.SessionHandle, label string, outputPath string, config keyGenConfig) (*keyInfo, error) {
+	_, err := pkcs11helpers.FindObject(ctx, session, []*pkcs11.Attribute{})
 	if err != pkcs11helpers.ErrNoObject {
 		return nil, fmt.Errorf("expected no objects in slot for key storage. got error: %s", err)
 	}
@@ -59,12 +63,12 @@ func generateKey(session *pkcs11helpers.Session, label string, outputPath string
 	var keyID []byte
 	switch config.Type {
 	case "rsa":
-		pubKey, keyID, err = rsaGenerate(session, label, config.RSAModLength, rsaExp)
+		pubKey, keyID, err = rsaGenerate(ctx, session, label, config.RSAModLength, rsaExp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate RSA key pair: %s", err)
 		}
 	case "ecdsa":
-		pubKey, keyID, err = ecGenerate(session, label, config.ECDSACurve)
+		pubKey, keyID, err = ecGenerate(ctx, session, label, config.ECDSACurve)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate ECDSA key pair: %s", err)
 		}

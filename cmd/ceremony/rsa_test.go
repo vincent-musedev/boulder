@@ -23,8 +23,7 @@ func TestRSAPub(t *testing.T) {
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS, []byte{255}),
 		}, nil
 	}
-	s := &pkcs11helpers.Session{ctx, 0}
-	_, err := rsaPub(s, 0, 0, 255)
+	_, err := rsaPub(ctx, 0, 0, 0, 255)
 	test.AssertError(t, err, "rsaPub didn't fail with non-matching exp")
 
 	// test we fail to construct key with non-matching modulus
@@ -34,7 +33,7 @@ func TestRSAPub(t *testing.T) {
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS, []byte{255}),
 		}, nil
 	}
-	_, err = rsaPub(s, 0, 16, 65537)
+	_, err = rsaPub(ctx, 0, 0, 16, 65537)
 	test.AssertError(t, err, "rsaPub didn't fail with non-matching modulus size")
 
 	// test we don't fail with the correct attributes
@@ -44,19 +43,18 @@ func TestRSAPub(t *testing.T) {
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS, []byte{255}),
 		}, nil
 	}
-	_, err = rsaPub(s, 0, 8, 65537)
+	_, err = rsaPub(ctx, 0, 0, 8, 65537)
 	test.AssertNotError(t, err, "rsaPub failed with valid attributes")
 }
 
 func TestRSAVerify(t *testing.T) {
 	ctx := pkcs11helpers.MockCtx{}
-	s := &pkcs11helpers.Session{&ctx, 0}
 
 	// test GenerateRandom failing
 	ctx.GenerateRandomFunc = func(pkcs11.SessionHandle, int) ([]byte, error) {
 		return nil, errors.New("yup")
 	}
-	err := rsaVerify(s, 0, nil)
+	err := rsaVerify(ctx, 0, 0, nil)
 	test.AssertError(t, err, "rsaVerify didn't fail on GenerateRandom error")
 
 	// test SignInit failing
@@ -66,7 +64,7 @@ func TestRSAVerify(t *testing.T) {
 	ctx.SignInitFunc = func(pkcs11.SessionHandle, []*pkcs11.Mechanism, pkcs11.ObjectHandle) error {
 		return errors.New("yup")
 	}
-	err = rsaVerify(s, 0, nil)
+	err = rsaVerify(ctx, 0, 0, nil)
 	test.AssertError(t, err, "rsaVerify didn't fail on SignInit error")
 
 	// test Sign failing
@@ -79,7 +77,7 @@ func TestRSAVerify(t *testing.T) {
 	ctx.SignFunc = func(pkcs11.SessionHandle, []byte) ([]byte, error) {
 		return nil, errors.New("yup")
 	}
-	err = rsaVerify(s, 0, nil)
+	err = rsaVerify(ctx, 0, 0, nil)
 	test.AssertError(t, err, "rsaVerify didn't fail on Sign error")
 
 	// test signature verification failing
@@ -88,7 +86,7 @@ func TestRSAVerify(t *testing.T) {
 	}
 	tk, err := rsa.GenerateKey(rand.Reader, 1024)
 	test.AssertNotError(t, err, "rsa.GenerateKey failed")
-	err = rsaVerify(s, 0, &tk.PublicKey)
+	err = rsaVerify(ctx, 0, 0, &tk.PublicKey)
 	test.AssertError(t, err, "rsaVerify didn't fail on signature verification error")
 
 	// test we don't fail with valid signature
@@ -96,13 +94,12 @@ func TestRSAVerify(t *testing.T) {
 		// Chop of the hash identifier and feed back into rsa.SignPKCS1v15
 		return rsa.SignPKCS1v15(rand.Reader, tk, crypto.SHA256, msg[19:])
 	}
-	err = rsaVerify(s, 0, &tk.PublicKey)
+	err = rsaVerify(ctx, 0, 0, &tk.PublicKey)
 	test.AssertNotError(t, err, "rsaVerify failed with a valid signature")
 }
 
 func TestRSAGenerate(t *testing.T) {
 	ctx := pkcs11helpers.MockCtx{}
-	s := &pkcs11helpers.Session{&ctx, 0}
 	ctx.GenerateRandomFunc = func(pkcs11.SessionHandle, int) ([]byte, error) {
 		return []byte{1, 2, 3}, nil
 	}
@@ -114,7 +111,7 @@ func TestRSAGenerate(t *testing.T) {
 	ctx.GenerateKeyPairFunc = func(pkcs11.SessionHandle, []*pkcs11.Mechanism, []*pkcs11.Attribute, []*pkcs11.Attribute) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 		return 0, 0, errors.New("bad")
 	}
-	_, _, err = rsaGenerate(s, "", 1024, 65537)
+	_, _, err = rsaGenerate(ctx, 0, "", 1024, 65537)
 	test.AssertError(t, err, "rsaGenerate didn't fail on GenerateKeyPair error")
 
 	// Test rsaGenerate fails when rsaPub fails
@@ -124,7 +121,7 @@ func TestRSAGenerate(t *testing.T) {
 	ctx.GetAttributeValueFunc = func(pkcs11.SessionHandle, pkcs11.ObjectHandle, []*pkcs11.Attribute) ([]*pkcs11.Attribute, error) {
 		return nil, errors.New("bad")
 	}
-	_, _, err = rsaGenerate(s, "", 1024, 65537)
+	_, _, err = rsaGenerate(ctx, 0, "", 1024, 65537)
 	test.AssertError(t, err, "rsaGenerate didn't fail on rsaPub error")
 
 	// Test rsaGenerate fails when rsaVerify fails
@@ -137,7 +134,7 @@ func TestRSAGenerate(t *testing.T) {
 	ctx.GenerateRandomFunc = func(pkcs11.SessionHandle, int) ([]byte, error) {
 		return nil, errors.New("yup")
 	}
-	_, _, err = rsaGenerate(s, "", 1024, 65537)
+	_, _, err = rsaGenerate(ctx, 0, "", 1024, 65537)
 	test.AssertError(t, err, "rsaGenerate didn't fail on rsaVerify error")
 
 	// Test rsaGenerate doesn't fail when everything works
@@ -151,6 +148,6 @@ func TestRSAGenerate(t *testing.T) {
 		// Chop of the hash identifier and feed back into rsa.SignPKCS1v15
 		return rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, msg[19:])
 	}
-	_, _, err = rsaGenerate(s, "", 1024, 65537)
+	_, _, err = rsaGenerate(ctx, 0, "", 1024, 65537)
 	test.AssertNotError(t, err, "rsaGenerate didn't succeed when everything worked as expected")
 }

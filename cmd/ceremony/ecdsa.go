@@ -76,11 +76,12 @@ func ecArgs(label string, curve elliptic.Curve, keyID []byte) generateArgs {
 // handle, and constructs an ecdsa.PublicKey. It also checks that the key is of
 // the correct curve type.
 func ecPub(
-	session *pkcs11helpers.Session,
+	ctx pkcs11helpers.PKCtx,
+	session pkcs11.SessionHandle,
 	object pkcs11.ObjectHandle,
 	expectedCurve elliptic.Curve,
 ) (*ecdsa.PublicKey, error) {
-	pubKey, err := session.GetECDSAPublicKey(object)
+	pubKey, err := pkcs11helpers.GetECDSAPublicKey(ctx, session, object)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +97,9 @@ func ecPub(
 // private key on the device, specified by the provided object handle, by signing
 // a nonce generated on the device and verifying the returned signature using the
 // public key.
-func ecVerify(session *pkcs11helpers.Session, object pkcs11.ObjectHandle, pub *ecdsa.PublicKey) error {
+func ecVerify(ctx pkcs11helpers.PKCtx, session pkcs11.SessionHandle, object pkcs11.ObjectHandle, pub *ecdsa.PublicKey) error {
 	nonce := make([]byte, 4)
-	_, err := newRandReader(session).Read(nonce)
+	_, err := newRandReader(ctx, session).Read(nonce)
 	if err != nil {
 		return fmt.Errorf("failed to construct nonce: %s", err)
 	}
@@ -107,7 +108,7 @@ func ecVerify(session *pkcs11helpers.Session, object pkcs11.ObjectHandle, pub *e
 	hashFunc.Write(nonce)
 	digest := hashFunc.Sum(nil)
 	log.Printf("\tMessage %s hash: %X\n", hashToString[curveToHash[pub.Curve]], digest)
-	signature, err := session.Sign(object, pkcs11helpers.ECDSAKey, digest, curveToHash[pub.Curve])
+	signature, err := pkcs11helpers.Sign(ctx, session, object, pkcs11helpers.ECDSAKey, digest, curveToHash[pub.Curve])
 	if err != nil {
 		return err
 	}
@@ -125,31 +126,31 @@ func ecVerify(session *pkcs11helpers.Session, object pkcs11.ObjectHandle, pub *e
 // specified by curveStr and with the provided label. It returns the public
 // part of the generated key pair as a ecdsa.PublicKey and the random key ID
 // that the HSM uses to identify the key pair.
-func ecGenerate(session *pkcs11helpers.Session, label, curveStr string) (*ecdsa.PublicKey, []byte, error) {
+func ecGenerate(ctx pkcs11helpers.PKCtx, session pkcs11.SessionHandle, label, curveStr string) (*ecdsa.PublicKey, []byte, error) {
 	curve, present := stringToCurve[curveStr]
 	if !present {
 		return nil, nil, fmt.Errorf("curve %q not supported", curveStr)
 	}
 	keyID := make([]byte, 4)
-	_, err := newRandReader(session).Read(keyID)
+	_, err := newRandReader(ctx, session).Read(keyID)
 	if err != nil {
 		return nil, nil, err
 	}
 	log.Printf("Generating ECDSA key with curve %s and ID %x\n", curveStr, keyID)
 	args := ecArgs(label, curve, keyID)
-	pub, priv, err := session.Module.GenerateKeyPair(session.Session, args.mechanism, args.publicAttrs, args.privateAttrs)
+	pub, priv, err := ctx.GenerateKeyPair(session, args.mechanism, args.publicAttrs, args.privateAttrs)
 	if err != nil {
 		return nil, nil, err
 	}
 	log.Println("Key generated")
 	log.Println("Extracting public key")
-	pk, err := ecPub(session, pub, curve)
+	pk, err := ecPub(ctx, session, pub, curve)
 	if err != nil {
 		return nil, nil, err
 	}
 	log.Println("Extracted public key")
 	log.Println("Verifying public key")
-	err = ecVerify(session, priv, pk)
+	err = ecVerify(ctx, session, priv, pk)
 	if err != nil {
 		return nil, nil, err
 	}
