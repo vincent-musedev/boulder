@@ -17,7 +17,7 @@ sys.path.append('./test')
 import startservers
 
 # Setup issuance hierarchy
-startservers.setupHierarchy()
+#startservers.setupHierarchy()
 
 if not startservers.start(race_detection=False, fakeclock=None):
     sys.exit(1)

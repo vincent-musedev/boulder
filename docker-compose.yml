@@ -19,6 +19,7 @@ services:
         volumes:
           - .:/go/src/github.com/letsencrypt/boulder:cached
           - ./.gocache:/root/.cache/go-build:cached
+          - ./2020/softhsm:/var/lib/softhsm/tokens/
         networks:
           bluenet:
             ipv4_address: 10.77.77.77

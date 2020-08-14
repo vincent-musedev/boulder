@@ -100,6 +100,7 @@ def make_csr(domains):
     key = OpenSSL.crypto.PKey()
     key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
     pem = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
+    print(pem.decode())
     return acme_crypto_util.make_csr(pem, domains, False)
 
 def http_01_answer(client, chall_body):

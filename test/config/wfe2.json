@@ -40,8 +40,8 @@
       }
     },
     "certificateChains": {
-      "http://boulder:4430/acme/issuer-cert": [ "/tmp/intermediate-cert-rsa-a.pem" ],
-      "http://127.0.0.1:4000/acme/issuer-cert": [ "/tmp/intermediate-cert-rsa-a.pem" ]
+      "http://boulder:4430/acme/issuer-cert": [ "2020/int-r3.cert.pem" ],
+      "http://127.0.0.1:4000/acme/issuer-cert": [ "2020/int-r3.cert.pem" ]
     },
     "staleTimeout": "5m",
     "authorizationLifetimeDays": 30,
@@ -58,6 +58,6 @@
   },
 
   "common": {
-    "issuerCert": "/tmp/intermediate-cert-rsa-a.pem"
+    "issuerCert": "2020/int-r3.cert.pem"
   }
 }
