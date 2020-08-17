@@ -1,0 +1,2 @@
+setup = ".muse/setup.sh"
+customTools = [ ".muse/tool.sh" ]
