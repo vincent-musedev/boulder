@@ -1,5 +1,6 @@
 
 #!/usr/bin/env bash
+
 # dir=$1 but it is not needed
 commit=$2
 cmd=$3
@@ -24,6 +25,6 @@ fi
 if [[ "$cmd" = "applicable" ]] ; then
   applicable
 fi
-fi [[ "$cmd" = "version" ]] ; then
+if [[ "$cmd" = "version" ]] ; then
   version
 fi
